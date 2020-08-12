@@ -1,0 +1,16 @@
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #b7b7b7;
+      }
+
+      .cls-2 {
+        fill: none;
+      }
+    </style>
+  </defs>
+  <path id="stroke" class="cls-1" d="M6,7.25v17.5A1.25,1.25,0,0,0,7.25,26h17.5A1.25,1.25,0,0,0,26,24.75V7.25A1.25,1.25,0,0,0,24.75,6H7.25A1.25,1.25,0,0,0,6,7.25ZM21.63,21.63H10.38V10.38H21.63Z"/>
+  <path id="fill" class="cls-1" d="M24.75,6H7.25A1.25,1.25,0,0,0,6,7.25v17.5A1.25,1.25,0,0,0,7.25,26h17.5A1.25,1.25,0,0,0,26,24.75V7.25A1.25,1.25,0,0,0,24.75,6ZM22.88,22.88H9.13V9.13H22.88Zm-1.25-12.5V21.63H10.38V10.38Z"/>
+  <rect id="frame" class="cls-2" width="32" height="32"/>
+</svg>
