@@ -4,11 +4,21 @@
     <Watcher v-model="selectionLength" property="app.selection.length" />
     <Panel script-path="./host/[appName]/">
       <Wrapper>
-        <Button
-          label="Collect All Colors"
-          evalScript="collectAllColors()"
-          @evalScript="reportResult"
-        />
+        <Grid>
+          <Button
+            icon="palette"
+            evalScript="collectAllColors()"
+            tooltip="Generate controllers"
+            @evalScript="reportResult"
+          />
+          <Button
+            icon="trash-can-outline"
+            :disabled="list.length < 1"
+            evalScript="scrubAllColors()"
+            tooltip="Delete all colors"
+            @evalScript="resetUI"
+          />
+        </Grid>
         <div class="list-item" v-for="(item, i) in list" :key="i">
           <Button flat disabled>
             <Icons :name="item.type" />
@@ -21,6 +31,7 @@
             flat
             v-model="item.tagName"
             placeholder="Tag title"
+            auto-select
             @update="updateTag(item, $event)"
           />
           <div style="padding: 5px;" />
@@ -79,14 +90,12 @@ export default {
     },
   },
   methods: {
+    resetUI() {
+      this.fills = this.strokes = this.taggedFills = this.taggedStrokes = [];
+    },
     async reportResult(evt) {
       // console.log(evt);
-      this.fills = this.removePrimitiveDuplicates(evt.fills).map((val) =>
-        this.constructItem("fill", val)
-      );
-      this.strokes = this.removePrimitiveDuplicates(evt.strokes).map((val) =>
-        this.constructItem("stroke", val)
-      );
+
       this.taggedFills = this.removeObjectDuplicates(
         evt.taggedFills,
         "tagName"
@@ -99,6 +108,17 @@ export default {
       ).map((item) => {
         return this.constructItem("stroke", item);
       });
+      this.fills = this.removePrimitiveDuplicates(evt.fills)
+        .map((val) => {
+          let alreadyExists = this.taggedFills.find((item) => {
+            return item.tagName == val;
+          });
+          return alreadyExists ? val + " copy" : val;
+        })
+        .map((val) => this.constructItem("fill", val));
+      this.strokes = this.removePrimitiveDuplicates(evt.strokes).map((val) =>
+        this.constructItem("stroke", val)
+      );
       await this.assignTags();
       // Assign!
     },
@@ -140,7 +160,7 @@ export default {
           tagName: value,
           previousName: value,
           dirty: false,
-          color: value,
+          color: value.replace(" copy", ""),
         };
       else
         return {

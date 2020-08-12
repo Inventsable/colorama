@@ -101,8 +101,9 @@ function findPathItemByTag(name, type) {
         });
     });
 }
-function selectPathItemsByTagName(name, type) {
-    app.selection = null;
+function selectPathItemsByTagName(name, type, additive) {
+    if (!additive)
+        app.selection = null;
     findPathItemByTag(name, type).forEach(function (pathItem) {
         pathItem.selected = true;
     });
@@ -114,8 +115,27 @@ function getPathItemsByColor(color, type) {
             pathItem[type + "Color"].toHex() == color);
     });
 }
-function selectPathItemsByColor(color, type) {
-    app.selection = null;
+function linkCurrentSelection(name, type) {
+    get("selection")
+        .filter(function (item) {
+        return /pathitem/i.test(item.typename);
+    })
+        .forEach(function (pathItem) {
+        var hasPrexisting = get("tags", pathItem).find(function (tag) {
+            return new RegExp(type).test(tag.name);
+        });
+        if (hasPrexisting)
+            hasPrexisting.value = name;
+        else {
+            var temp = pathItem.tags.add();
+            temp.name = "colorama" + type;
+            temp.value = name;
+        }
+    });
+}
+function selectPathItemsByColor(color, type, additive) {
+    if (!additive)
+        app.selection = null;
     getPathItemsByColor(color, type).forEach(function (pathItem) {
         pathItem.selected = true;
     });
@@ -132,5 +152,24 @@ function findTags(name, type) {
         });
     });
     return tags;
+}
+function findAllColoramas() {
+    return get("pathItems").filter(function (pathItem) {
+        return (pathItem.tags.length &&
+            get("tags", pathItem).filter(function (tag) {
+                return new RegExp("colorama").test(tag.name);
+            }).length);
+    });
+}
+function scrubAllColors() {
+    findAllColoramas().forEach(function (pathItem) {
+        get("tags", pathItem)
+            .filter(function (tag) {
+            return new RegExp("colorama").test(tag.name);
+        })
+            .forEach(function (tag) {
+            tag.remove();
+        });
+    });
 }
 console.log("Host is loaded");

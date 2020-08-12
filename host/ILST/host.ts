@@ -118,8 +118,8 @@ function findPathItemByTag(name, type) {
   });
 }
 
-function selectPathItemsByTagName(name, type) {
-  app.selection = null;
+function selectPathItemsByTagName(name, type, additive) {
+  if (!additive) app.selection = null;
   findPathItemByTag(name, type).forEach((pathItem) => {
     pathItem.selected = true;
   });
@@ -135,8 +135,26 @@ function getPathItemsByColor(color, type) {
   });
 }
 
-function selectPathItemsByColor(color, type) {
-  app.selection = null;
+function linkCurrentSelection(name, type) {
+  get("selection")
+    .filter((item) => {
+      return /pathitem/i.test(item.typename);
+    })
+    .forEach((pathItem) => {
+      let hasPrexisting = get("tags", pathItem).find((tag) => {
+        return new RegExp(type).test(tag.name);
+      });
+      if (hasPrexisting) hasPrexisting.value = name;
+      else {
+        let temp = pathItem.tags.add();
+        temp.name = "colorama" + type;
+        temp.value = name;
+      }
+    });
+}
+
+function selectPathItemsByColor(color, type, additive) {
+  if (!additive) app.selection = null;
   getPathItemsByColor(color, type).forEach((pathItem) => {
     pathItem.selected = true;
   });
@@ -154,6 +172,29 @@ function findTags(name, type) {
       });
   });
   return tags;
+}
+
+function findAllColoramas() {
+  return get("pathItems").filter((pathItem) => {
+    return (
+      pathItem.tags.length &&
+      get("tags", pathItem).filter((tag) => {
+        return new RegExp("colorama").test(tag.name);
+      }).length
+    );
+  });
+}
+
+function scrubAllColors() {
+  findAllColoramas().forEach((pathItem) => {
+    get("tags", pathItem)
+      .filter((tag) => {
+        return new RegExp("colorama").test(tag.name);
+      })
+      .forEach((tag) => {
+        tag.remove();
+      });
+  });
 }
 
 console.log("Host is loaded");
