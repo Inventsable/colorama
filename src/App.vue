@@ -13,7 +13,10 @@
           <Button flat disabled>
             <Icons :name="item.type" />
           </Button>
-          <Color-Picker v-model="item.color" />
+          <Color-Picker
+            v-model="item.color"
+            @update="updateColor(item, $event)"
+          />
           <Input
             flat
             v-model="item.tagName"
@@ -80,21 +83,31 @@ export default {
       };
     },
     async assignTags() {
-      console.log("ASSIGNING...");
       let msg = this.list.map((item) => {
         return {
-          name: `colorama-${item.type}`,
+          name: `colorama${item.type}`,
           value: item.tagName,
           color: item.color,
           type: item.type,
         };
       });
-      console.log(msg);
       await evalScript(`assignTags('${JSON.stringify(msg)}')`);
     },
-    updateTag(item, evt) {
-      console.log(item);
-      console.log(evt);
+    async updateTag(item, evt) {
+      item.dirty = true;
+      await evalScript(
+        `reassignTagName('${item.previousName}', '${evt}', '${item.type}')`
+      );
+      item.previousName = evt;
+      item.dirty = false;
+    },
+    async updateColor(item) {
+      console.log(
+        `updateColorOfTag('${item.tagName}', '${item.type}', '${item.color}')`
+      );
+      await evalScript(
+        `updateColorOfTag('${item.tagName}', '${item.type}', '${item.color}')`
+      );
     },
   },
 };
