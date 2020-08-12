@@ -1,16 +1,25 @@
 <template>
   <div id="app">
-    <Menus refresh debug />
-    <Watcher v-model="selectionLength" property="app.selection.length" />
+    <Menus refresh debug :context="contextMenu" />
+    <Watcher
+      v-if="scanForSelection && list.length"
+      v-model="selectionLength"
+      property="app.selection.length"
+    />
+    <Watcher
+      v-if="scanForDocument"
+      v-model="documentName"
+      property="app.activeDocument.name"
+    />
     <Panel script-path="./host/[appName]/">
       <Wrapper>
         <Grid>
           <Button
             icon="palette"
-            evalScript="collectAllColors()"
+            @click="generateMenu"
             tooltip="Generate controllers"
-            @evalScript="reportResult"
           />
+          <!-- @evalScript="reportResult" -->
           <Button
             icon="trash-can-outline"
             :disabled="list.length < 1"
@@ -34,8 +43,7 @@
             auto-select
             @update="updateTag(item, $event)"
           />
-          <div style="padding: 5px;" />
-
+          <div style="padding: 0px 5px;" />
           <Button
             icon="tag-plus"
             flat
@@ -77,6 +85,10 @@ export default {
     taggedFills: [],
     strokes: [],
     taggedStrokes: [],
+    scanForDocument: false,
+    scanForSelection: true,
+    scanOnMount: false,
+    documentName: "",
   }),
   computed: {
     list() {
@@ -86,16 +98,64 @@ export default {
       return [].concat(list, this.strokes);
     },
     hasSelection() {
-      return this.selectionLength > 0;
+      return !this.scanForSelection || this.selectionLength > 0;
+    },
+    prefs() {
+      return {
+        scanForSelection: this.scanForSelection,
+        scanForDocument: this.scanForDocument,
+        scanOnMount: this.scanOnMount,
+      };
+    },
+    contextMenu() {
+      return [
+        {
+          label: "Scan user selection",
+          checkable: true,
+          checked: this.scanForSelection,
+          callback: this.assignScanForSelection,
+        },
+        {
+          label: "Launch on mount",
+          checkable: true,
+          checked: this.scanOnMount,
+          callback: this.assignScanOnMount,
+        },
+        {
+          label: "Refresh on document change",
+          checkable: true,
+          enabled: false,
+          checked: this.scanForDocument,
+          callback: this.assignScanForDocument,
+        },
+      ];
     },
   },
+  watch: {
+    prefs: {
+      handler(val) {
+        this.setPrefs(val);
+      },
+      deep: true,
+    },
+  },
+  async mounted() {
+    this.getPrefs();
+    if (this.scanForDocument)
+      this.documentName = await evalScript(
+        "(function {return app.activeDocument.name}())"
+      );
+    if (this.scanOnMount) this.generateMenu();
+  },
   methods: {
+    async generateMenu() {
+      let result = await evalScript("collectAllColors()");
+      this.reportResult(result);
+    },
     resetUI() {
       this.fills = this.strokes = this.taggedFills = this.taggedStrokes = [];
     },
     async reportResult(evt) {
-      // console.log(evt);
-
       this.taggedFills = this.removeObjectDuplicates(
         evt.taggedFills,
         "tagName"
@@ -137,7 +197,6 @@ export default {
       });
     },
     async selectByTagName(item, event) {
-      console.log(event);
       await evalScript(
         `selectPathItemsByTagName('${item.tagName}', '${
           item.type
@@ -145,7 +204,6 @@ export default {
       );
     },
     async selectByColor(item, event) {
-      console.log(event.shiftKey);
       await evalScript(
         `selectPathItemsByColor('${item.color}', '${
           item.type
@@ -153,7 +211,6 @@ export default {
       );
     },
     constructItem(type, value) {
-      console.log(value);
       if (/string/i.test(typeof value))
         return {
           type: type,
@@ -191,12 +248,29 @@ export default {
       item.dirty = false;
     },
     async updateColor(item) {
-      console.log(
-        `updateColorOfTag('${item.tagName}', '${item.type}', '${item.color}')`
-      );
       await evalScript(
         `updateColorOfTag('${item.tagName}', '${item.type}', '${item.color}')`
       );
+    },
+    setPrefs(value = null) {
+      if (!value) value = this.prefs;
+      window.localStorage.setItem("colorama", JSON.stringify(value));
+    },
+    getPrefs() {
+      let data = window.localStorage.getItem("colorama");
+      data = !data ? this.prefs : JSON.parse(data);
+      Object.keys(data).forEach((key) => {
+        this[key] = data[key];
+      });
+    },
+    assignScanForDocument(v, i, a) {
+      this.scanForDocument = a;
+    },
+    assignScanOnMount(v, i, a) {
+      this.scanOnMount = a;
+    },
+    assignScanForSelection(v, i, a) {
+      this.scanForSelection = a;
     },
   },
 };
