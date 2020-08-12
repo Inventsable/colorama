@@ -25,12 +25,26 @@
           />
           <div style="padding: 5px;" />
 
-          <Button icon="select-all" flat tooltip="Select all" />
+          <Button
+            icon="tag-plus"
+            flat
+            tooltip="Select by tag"
+            @clickevt="selectByTagName(item, $event)"
+          />
+          <Button
+            icon="select-all"
+            flat
+            tooltip="Select by color"
+            @clickevt="selectByColor(item, $event)"
+          />
           <Button
             icon="link"
             :disabled="!hasSelection"
             flat
-            tooltip="Link selection"
+            tooltip="Link current selection"
+            :evalScript="
+              `linkCurrentSelection('${item.tagName}', '${item.type}')`
+            "
           />
         </div>
       </Wrapper>
@@ -49,11 +63,16 @@ export default {
     tagName: "test",
     selectionLength: 0,
     fills: [],
+    taggedFills: [],
     strokes: [],
+    taggedStrokes: [],
   }),
   computed: {
     list() {
-      return [].concat(this.fills, this.strokes);
+      let list = [];
+      list = [].concat(this.taggedFills, this.fills);
+      list = [].concat(list, this.taggedStrokes);
+      return [].concat(list, this.strokes);
     },
     hasSelection() {
       return this.selectionLength > 0;
@@ -61,26 +80,76 @@ export default {
   },
   methods: {
     async reportResult(evt) {
-      this.fills = this.removeDuplicates(evt.fills).map((val) =>
+      // console.log(evt);
+      this.fills = this.removePrimitiveDuplicates(evt.fills).map((val) =>
         this.constructItem("fill", val)
       );
-      this.strokes = this.removeDuplicates(evt.strokes).map((val) =>
+      this.strokes = this.removePrimitiveDuplicates(evt.strokes).map((val) =>
         this.constructItem("stroke", val)
       );
-      console.log(this.list);
+      this.taggedFills = this.removeObjectDuplicates(
+        evt.taggedFills,
+        "tagName"
+      ).map((item) => {
+        return this.constructItem("fill", item);
+      });
+      this.taggedStrokes = this.removeObjectDuplicates(
+        evt.taggedStrokes,
+        "tagName"
+      ).map((item) => {
+        return this.constructItem("stroke", item);
+      });
       await this.assignTags();
+      // Assign!
     },
-    removeDuplicates(items) {
+    removePrimitiveDuplicates(items) {
       return !items.length ? [] : [...new Set(items)];
     },
+    removeObjectDuplicates(a, param) {
+      return a.filter((item, pos, array) => {
+        return (
+          array
+            .map((mapItem) => {
+              return mapItem[param];
+            })
+            .indexOf(item[param]) === pos
+        );
+      });
+    },
+    async selectByTagName(item, event) {
+      console.log(event);
+      await evalScript(
+        `selectPathItemsByTagName('${item.tagName}', '${
+          item.type
+        }', ${+event.shiftKey})`
+      );
+    },
+    async selectByColor(item, event) {
+      console.log(event.shiftKey);
+      await evalScript(
+        `selectPathItemsByColor('${item.color}', '${
+          item.type
+        }', ${+event.shiftKey})`
+      );
+    },
     constructItem(type, value) {
-      return {
-        type: type,
-        tagName: value,
-        previousName: value,
-        dirty: false,
-        color: value,
-      };
+      console.log(value);
+      if (/string/i.test(typeof value))
+        return {
+          type: type,
+          tagName: value,
+          previousName: value,
+          dirty: false,
+          color: value,
+        };
+      else
+        return {
+          type: value.type,
+          tagName: value.tagName,
+          previousName: value.tagName,
+          dirty: false,
+          color: value.color,
+        };
     },
     async assignTags() {
       let msg = this.list.map((item) => {
